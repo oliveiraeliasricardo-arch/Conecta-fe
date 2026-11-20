@@ -4,7 +4,7 @@
    Sistema de vídeos do YouTube
 ===================================== */
 
-const API_KEY = "COLOQUE_SUA_CHAVE_API_AQUI";
+const API_KEY = "AIzaSyCVKPD1cjw6_ltk2vf7EcQrJXDva4UXjUg";
 
 const API_URL = "https://www.googleapis.com/youtube/v3/search";
 
