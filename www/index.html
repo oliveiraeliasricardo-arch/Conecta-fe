@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -5,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#080808">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Conecta Fé</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
   <header class="topbar">
@@ -16,13 +17,7 @@
       <span class="brand-icon">✝</span>
       <span>Conecta <b>Fé</b></span>
     </div>
-
-    <button class="icon-button" id="searchButton" aria-label="Pesquisar">
-      <svg viewBox="0 0 24 24">
-        <circle cx="10.8" cy="10.8" r="6.8"></circle>
-        <path d="m16 16 5 5"></path>
-      </svg>
-    </button>
+    <button class="icon-button" id="searchButton">⌕</button>
   </header>
 
   <nav class="categories" id="categories">
@@ -54,18 +49,13 @@
 
   <nav class="bottom-nav">
     <button class="nav-item active" data-page="home">
-      <span>⌂</span>
-      <small>Início</small>
+      <span>⌂</span><small>Início</small>
     </button>
-
     <button class="nav-item" data-page="explore">
-      <span>⌕</span>
-      <small>Explorar</small>
+      <span>⌕</span><small>Explorar</small>
     </button>
-
     <button class="nav-item" data-page="saved">
-      <span>♡</span>
-      <small>Salvos</small>
+      <span>♡</span><small>Salvos</small>
     </button>
   </nav>
 
@@ -73,6 +63,5 @@
 
   <script src="app.js"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
-
 </body>
 </html>
