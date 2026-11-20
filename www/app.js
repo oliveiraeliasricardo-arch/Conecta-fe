@@ -4,7 +4,7 @@
    Sistema de vídeos do YouTube
 ===================================== */
 
-const API_KEY = "AIzaSyCVKPD1cjw6_ltk2vf7EcQrJXDva4UXjUg";
+const API_KEY = "AIzaSyAS3BhR0B7d2ElA86jMirUB7hoMM_zWBc8";
 
 const API_URL = "https://www.googleapis.com/youtube/v3/search";
 
@@ -17,8 +17,6 @@ let activeCategory = "Jesus Cristo evangelho mensagem bíblica";
 let nextPageToken = "";
 let loading = false;
 let observer = null;
-
-let soundEnabled = false;
 
 let players = new Map();
 let currentVideos = [];
@@ -34,8 +32,9 @@ function toast(message) {
 
     const el = document.getElementById("toast");
 
-    el.textContent = message;
+    if (!el) return;
 
+    el.textContent = message;
     el.classList.add("show");
 
     clearTimeout(toast.timer);
@@ -108,7 +107,10 @@ async function loadVideos(query, reset = false) {
 
     if (loading) return;
 
-    if (API_KEY === "COLOQUE_SUA_CHAVE_API_AQUI") {
+    if (
+        !API_KEY ||
+        API_KEY === "COLOQUE_SUA_NOVA_CHAVE_AQUI"
+    ) {
 
         toast("Configure sua chave da API do YouTube.");
 
@@ -170,9 +172,7 @@ async function loadVideos(query, reset = false) {
         });
 
         if (nextPageToken) {
-
             params.set("pageToken", nextPageToken);
-
         }
 
         const response = await fetch(
@@ -281,10 +281,6 @@ function addVideoCard(item) {
 
         <div class="video-shade"></div>
 
-        <button class="sound-toggle" data-sound>
-            ♫ Ativar som
-        </button>
-
         <div class="video-info">
 
             <div class="video-channel">
@@ -377,31 +373,6 @@ function addVideoCard(item) {
         });
 
 
-    /* SOM */
-
-    card.querySelector("[data-sound]")
-        .addEventListener("click", () => {
-
-            soundEnabled = !soundEnabled;
-
-            players.forEach(player => {
-
-                if (soundEnabled) {
-                    player.unMute();
-                } else {
-                    player.mute();
-                }
-
-            });
-
-            card.querySelector("[data-sound]").textContent =
-                soundEnabled
-                ? "♫ Som ativado"
-                : "♫ Ativar som";
-
-        });
-
-
     feed.appendChild(card);
 
 }
@@ -458,9 +429,7 @@ async function shareVideo(id, title) {
     } catch (error) {
 
         if (error.name !== "AbortError") {
-
             toast("Não foi possível compartilhar.");
-
         }
 
     }
@@ -475,9 +444,7 @@ async function shareVideo(id, title) {
 function observeCards() {
 
     if (observer) {
-
         observer.disconnect();
-
     }
 
     observer = new IntersectionObserver(entries => {
@@ -498,9 +465,7 @@ function observeCards() {
                 const player = players.get(id);
 
                 if (player && player.pauseVideo) {
-
                     player.pauseVideo();
-
                 }
 
             }
@@ -527,7 +492,8 @@ function observeCards() {
         if (
             feed.scrollTop + feed.clientHeight >=
             feed.scrollHeight - 500 &&
-            nextPageToken
+            nextPageToken &&
+            !loading
         ) {
 
             loadVideos(activeCategory, false);
@@ -552,6 +518,8 @@ function createPlayer(id) {
         const player = players.get(id);
 
         if (player.playVideo) {
+
+            player.mute();
 
             player.playVideo();
 
@@ -595,15 +563,7 @@ function createPlayer(id) {
 
             onReady: event => {
 
-                if (soundEnabled) {
-
-                    event.target.unMute();
-
-                } else {
-
-                    event.target.mute();
-
-                }
+                event.target.mute();
 
                 event.target.playVideo();
 
@@ -670,12 +630,17 @@ document.querySelectorAll(".category")
    BOTÃO INICIAR
 ===================================== */
 
-document.getElementById("startButton")
-    .addEventListener("click", () => {
+const startButton = document.getElementById("startButton");
+
+if (startButton) {
+
+    startButton.addEventListener("click", () => {
 
         loadVideos(activeCategory, true);
 
     });
+
+}
 
 
 /* =====================================
@@ -771,5 +736,4 @@ document.getElementById("savedButton")
         );
 
     });
-
-          
+                      
