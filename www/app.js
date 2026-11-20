@@ -1,7 +1,7 @@
 "use strict";
 
 /* CONFIGURAÇÃO */
-const API_KEY = "AIzaSyCoG9A0z1M7ag1vP8vq7oEgXQb95aO-mbY";
+const API_KEY = "mimhachaveaqui";
 
 const APPROVED_CHANNELS = [
   {
