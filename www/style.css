@@ -8,12 +8,15 @@
     --gold: #d7b66b;
     --white: #f8f8fa;
     --muted: #a6a8b0;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 html, body {
     margin: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
     overflow: hidden;
     background: var(--bg);
     color: var(--white);
@@ -36,7 +39,7 @@ button {
     height: 54px;
     position: absolute;
     z-index: 20;
-    top: 0;
+    top: var(--safe-top);
     left: 0;
     right: 0;
 
@@ -75,10 +78,8 @@ button {
     background: #171920c9;
     border: 1px solid #ffffff20;
     border-radius: 50%;
-
     width: 38px;
     height: 38px;
-
     font-size: 25px;
     display: grid;
     place-items: center;
@@ -90,7 +91,7 @@ button {
     position: absolute;
     z-index: 20;
 
-    top: 57px;
+    top: calc(var(--safe-top) + 57px);
     left: 0;
     right: 0;
 
@@ -115,14 +116,10 @@ button {
 .category {
     white-space: nowrap;
     background: transparent;
-
     color: #c4c5ca;
-
     font-size: 13px;
     font-weight: 600;
-
     padding: 7px 0;
-
     position: relative;
 }
 
@@ -132,14 +129,11 @@ button {
 
 .category.active::after {
     content: "";
-
     position: absolute;
     bottom: 0;
     left: 25%;
-
     width: 50%;
     height: 2px;
-
     background: var(--gold);
     border-radius: 3px;
 }
@@ -149,7 +143,10 @@ button {
 .feed {
     position: absolute;
 
-    inset: 0 0 58px 0;
+    top: var(--safe-top);
+    left: 0;
+    right: 0;
+    bottom: calc(58px + var(--safe-bottom));
 
     overflow-y: auto;
 
@@ -189,7 +186,6 @@ button {
 .cross {
     font-size: 65px;
     color: var(--gold);
-
     text-shadow: 0 0 35px #d7b66b55;
 }
 
@@ -200,22 +196,16 @@ button {
 
 .welcome p {
     max-width: 270px;
-
     color: var(--muted);
-
     line-height: 1.5;
-
     margin: 0 0 25px;
 }
 
 .primary-button {
     background: var(--gold);
     color: #17130b;
-
     font-weight: 800;
-
     border-radius: 25px;
-
     padding: 12px 22px;
 }
 
@@ -224,12 +214,9 @@ button {
 .video-card {
     height: 100%;
     min-height: 100%;
-
     position: relative;
-
     scroll-snap-align: start;
     scroll-snap-stop: always;
-
     background: #050608;
     overflow: hidden;
 }
@@ -237,10 +224,8 @@ button {
 .player-shell {
     position: absolute;
     inset: 0;
-
     display: grid;
     place-items: center;
-
     background: #050608;
 }
 
@@ -252,7 +237,6 @@ button {
 
 .video-shade {
     pointer-events: none;
-
     position: absolute;
     inset: 0;
 
@@ -270,11 +254,9 @@ button {
 .video-info {
     position: absolute;
     z-index: 4;
-
     left: 16px;
     right: 75px;
     bottom: 25px;
-
     text-shadow: 0 2px 8px #000;
 }
 
@@ -282,14 +264,12 @@ button {
     font-size: 15px;
     font-weight: 700;
     line-height: 1.4;
-
     margin: 0 0 8px;
 }
 
 .video-channel {
     font-size: 12px;
     color: #e3e3e5;
-
     margin-bottom: 8px;
 }
 
@@ -297,7 +277,6 @@ button {
     font-size: 12px;
     color: #e0e0e2;
     line-height: 1.4;
-
     max-height: 50px;
     overflow: hidden;
 }
@@ -307,81 +286,49 @@ button {
 .video-actions {
     position: absolute;
     z-index: 5;
-
     right: 12px;
     bottom: 34px;
 
     display: flex;
     flex-direction: column;
     align-items: center;
-
     gap: 19px;
 }
 
 .action-button {
     background: #111318a8;
     border: 1px solid #ffffff22;
-
     border-radius: 50%;
-
     width: 45px;
     height: 45px;
-
     font-size: 21px;
-
     display: grid;
     place-items: center;
 }
 
 .action-label {
     font-size: 10px;
-
     text-shadow: 0 1px 5px #000;
-
     margin-top: -15px;
-}
-
-.sound-toggle {
-    position: absolute;
-    z-index: 6;
-
-    right: 15px;
-    top: 112px;
-
-    background: #111318b8;
-    border: 1px solid #ffffff2a;
-
-    border-radius: 20px;
-
-    padding: 8px 12px;
-
-    font-size: 11px;
 }
 
 /* CARREGAMENTO */
 
 .loading-card {
     height: 100%;
-
     display: grid;
     place-items: center;
-
     color: var(--muted);
-
     scroll-snap-align: start;
 }
 
 .spinner {
     width: 28px;
     height: 28px;
-
     border: 3px solid #ffffff25;
     border-top-color: var(--gold);
-
     border-radius: 50%;
-
     animation: spin .8s linear infinite;
-
     margin: auto auto 12px;
 }
 
@@ -401,27 +348,25 @@ button {
     left: 0;
     right: 0;
 
-    height: 58px;
+    height: calc(58px + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
 
     display: flex;
     justify-content: space-around;
     align-items: center;
 
     background: #090a0ef2;
-
     border-top: 1px solid #ffffff12;
 }
 
 .bottom-item {
-    height: 100%;
+    height: 58px;
     min-width: 70px;
 
     display: flex;
     flex-direction: column;
-
     align-items: center;
     justify-content: center;
-
     gap: 2px;
 
     background: transparent;
@@ -447,10 +392,12 @@ button {
     position: absolute;
     z-index: 40;
 
-    inset: 0 0 58px;
+    top: var(--safe-top);
+    left: 0;
+    right: 0;
+    bottom: calc(58px + var(--safe-bottom));
 
     background: #090a0e;
-
     padding: 15px;
 }
 
@@ -463,14 +410,10 @@ button {
 .search-row input {
     flex: 1;
     min-width: 0;
-
     background: #191b22;
-
     border: 1px solid #ffffff18;
     border-radius: 22px;
-
     padding: 12px 14px;
-
     color: white;
     outline: none;
 }
@@ -478,20 +421,15 @@ button {
 .search-submit {
     background: var(--gold);
     color: #17130b;
-
     font-weight: 800;
-
     border-radius: 22px;
-
     padding: 12px 15px;
 }
 
 .search-hint {
     font-size: 12px;
     color: var(--muted);
-
     line-height: 1.5;
-
     margin: 18px 5px;
 }
 
@@ -505,27 +443,20 @@ button {
     position: absolute;
     z-index: 60;
 
-    bottom: 75px;
+    bottom: calc(75px + var(--safe-bottom));
     left: 50%;
 
     transform: translate(-50%, 15px);
-
     opacity: 0;
-
     pointer-events: none;
 
     background: #24262d;
     color: white;
-
     border: 1px solid #ffffff22;
     border-radius: 20px;
-
     padding: 10px 15px;
-
     font-size: 12px;
-
     transition: .2s;
-
     white-space: nowrap;
 }
 
@@ -544,7 +475,6 @@ button {
 /* COMPUTADOR E TELAS GRANDES */
 
 @media (min-width: 700px) {
-
     .feed {
         width: min(100%, 480px);
         left: 50%;
@@ -559,6 +489,4 @@ button {
         justify-content: center;
         gap: 65px;
     }
-
-      }
-  
+                 }
