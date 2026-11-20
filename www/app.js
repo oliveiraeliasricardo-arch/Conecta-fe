@@ -1,739 +1,678 @@
+// ==========================================
+// CONECTA FÉ
+// ==========================================
 
-/* =====================================
-   CONECTA FÉ
-   Sistema de vídeos do YouTube
-===================================== */
-
+// Coloque aqui sua chave nova do YouTube Data API
 const API_KEY = "AIzaSyAS3BhR0B7d2ElA86jMirUB7hoMM_zWBc8";
 
-const API_URL = "https://www.googleapis.com/youtube/v3/search";
-
 const feed = document.getElementById("feed");
+const toast = document.getElementById("toast");
+const welcome = document.getElementById("welcome");
 const searchPanel = document.getElementById("searchPanel");
 const searchInput = document.getElementById("searchInput");
 
-let activeCategory = "Jesus Cristo evangelho mensagem bíblica";
-
+let videos = [];
 let nextPageToken = "";
+let currentCategory = "Todos";
+let currentQuery = "";
+let currentPage = "home";
 let loading = false;
-let observer = null;
+let playerReady = false;
+let activeVideoId = null;
+let soundEnabled = false;
 
-let players = new Map();
-let currentVideos = [];
-let videoData = new Map();
-let savedVideos = new Set();
+const players = new Map();
+const savedVideos = new Set(
+  JSON.parse(localStorage.getItem("conectaFeSaved") || "[]")
+);
+const likedVideos = new Set(
+  JSON.parse(localStorage.getItem("conectaFeLiked") || "[]")
+);
 
+const categorySearch = {
+  "Todos": "Jesus evangelho pregação cristã louvor",
+  "Jesus": "Jesus Cristo vida e ensinamentos",
+  "Pregação": "pregação evangélica mensagem bíblica",
+  "Louvor": "louvor cristão música gospel adoração",
+  "Bíblia": "estudo bíblico palavra de Deus",
+  "Oração": "oração cristã mensagem oração",
+  "Testemunho": "testemunho cristão transformação de vida"
+};
 
-/* =====================================
-   MENSAGENS
-===================================== */
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add("show");
 
-function toast(message) {
-
-    const el = document.getElementById("toast");
-
-    if (!el) return;
-
-    el.textContent = message;
-    el.classList.add("show");
-
-    clearTimeout(toast.timer);
-
-    toast.timer = setTimeout(() => {
-        el.classList.remove("show");
-    }, 2200);
-
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2200);
 }
 
-
-/* =====================================
-   TELA INICIAL
-===================================== */
-
-function showWelcome() {
-
-    feed.innerHTML = `
-        <div class="welcome">
-
-            <div class="cross">✝</div>
-
-            <h1>Alimente sua fé.</h1>
-
-            <p>
-                Vídeos sobre Jesus, Palavra,
-                louvor e vida cristã.
-            </p>
-
-            <button id="startButton"
-                class="primary-button">
-                Começar a assistir
-            </button>
-
-        </div>
-    `;
-
-    document.getElementById("startButton")
-        .addEventListener("click", () => {
-            loadVideos(activeCategory, true);
-        });
-
+function escapeHTML(value = "") {
+  return String(value).replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[char]);
 }
 
+function apiKeyIsValid() {
+  return API_KEY &&
+    API_KEY !== "COLOQUE_SUA_CHAVE_API_AQUI";
+}
 
-/* =====================================
-   ENCERRAR PLAYERS ANTERIORES
-===================================== */
+function showLoading(message = "Carregando vídeos...") {
+  feed.innerHTML = `
+    <div class="loading-message">
+      <div style="font-size:38px;color:#d8ae55">✝</div>
+      <p>${escapeHTML(message)}</p>
+    </div>
+  `;
+}
 
-function destroyPlayers() {
+function showEmpty(message) {
+  feed.innerHTML = `
+    <div class="empty-message">
+      <div style="font-size:38px;color:#d8ae55">✝</div>
+      <h3>Conecta Fé</h3>
+      <p>${escapeHTML(message)}</p>
+    </div>
+  `;
+}
 
-    players.forEach(player => {
+async function loadVideos(reset = true) {
+  if (loading) return;
 
-        try {
-            player.destroy();
-        } catch (error) {}
+  if (!apiKeyIsValid()) {
+    showEmpty("Configure sua chave da API do YouTube no arquivo app.js.");
+    return;
+  }
 
+  if (reset) {
+    videos = [];
+    nextPageToken = "";
+    feed.innerHTML = "";
+    showLoading();
+  }
+
+  loading = true;
+
+  try {
+    let query = currentQuery;
+
+    if (!query) {
+      query = categorySearch[currentCategory] || categorySearch["Todos"];
+    }
+
+    const params = new URLSearchParams({
+      part: "snippet",
+      type: "video",
+      q: query,
+      maxResults: "12",
+      order: "relevance",
+      safeSearch: "strict",
+      videoEmbeddable: "true",
+      videoSyndicated: "true",
+      key: API_KEY
     });
 
-    players.clear();
-
-}
-
-
-/* =====================================
-   BUSCAR VÍDEOS NO YOUTUBE
-===================================== */
-
-async function loadVideos(query, reset = false) {
-
-    if (loading) return;
-
-    if (
-        !API_KEY ||
-        API_KEY === "COLOQUE_SUA_NOVA_CHAVE_AQUI"
-    ) {
-
-        toast("Configure sua chave da API do YouTube.");
-
-        return;
-
+    if (nextPageToken) {
+      params.set("pageToken", nextPageToken);
     }
 
-    loading = true;
+    const response = await fetch(
+      "https://www.googleapis.com/youtube/v3/search?" + params.toString()
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error?.message || "Erro ao buscar vídeos.");
+    }
+
+    nextPageToken = data.nextPageToken || "";
+
+    const newVideos = (data.items || [])
+      .filter(item => item.id && item.id.videoId)
+      .map(item => ({
+        id: item.id.videoId,
+        title: item.snippet.title,
+        channel: item.snippet.channelTitle,
+        description: item.snippet.description || ""
+      }));
 
     if (reset) {
-
-        destroyPlayers();
-
-        nextPageToken = "";
-
-        currentVideos = [];
-
-        videoData.clear();
-
-        feed.innerHTML = "";
-
+      videos = newVideos;
+    } else {
+      const existing = new Set(videos.map(video => video.id));
+      videos.push(...newVideos.filter(video => !existing.has(video.id)));
     }
 
-    const loader = document.createElement("div");
-
-    loader.className = "loading-card";
-
-    loader.innerHTML = `
-        <div>
-            <div class="spinner"></div>
-            Carregando vídeos...
-        </div>
-    `;
-
-    feed.appendChild(loader);
-
-    try {
-
-        const params = new URLSearchParams({
-
-            part: "snippet",
-
-            q: query + " cristão",
-
-            type: "video",
-
-            videoEmbeddable: "true",
-
-            videoSyndicated: "true",
-
-            safeSearch: "strict",
-
-            maxResults: "12",
-
-            order: "relevance",
-
-            key: API_KEY
-
-        });
-
-        if (nextPageToken) {
-            params.set("pageToken", nextPageToken);
-        }
-
-        const response = await fetch(
-            `${API_URL}?${params.toString()}`
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.error?.message ||
-                "Não foi possível carregar os vídeos."
-            );
-
-        }
-
-        nextPageToken = data.nextPageToken || "";
-
-        const items = (data.items || []).filter(item => {
-
-            return item.id?.videoId && item.snippet;
-
-        });
-
-        loader.remove();
-
-        if (reset && items.length === 0) {
-
-            feed.innerHTML = `
-                <div class="error">
-                    Nenhum vídeo encontrado.
-                    Tente outra pesquisa.
-                </div>
-            `;
-
-            return;
-
-        }
-
-        items.forEach(addVideoCard);
-
-        if (!items.length && !currentVideos.length) {
-
-            feed.innerHTML = `
-                <div class="error">
-                    Não encontramos vídeos nesta busca.
-                </div>
-            `;
-
-        }
-
-        observeCards();
-
-    } catch (error) {
-
-        loader.remove();
-
-        const card = document.createElement("div");
-
-        card.className = "error";
-
-        card.textContent =
-            "Erro ao carregar vídeos: " + error.message;
-
-        feed.appendChild(card);
-
-    } finally {
-
-        loading = false;
-
+    if (reset) {
+      feed.innerHTML = "";
     }
 
+    if (videos.length === 0) {
+      showEmpty("Não encontramos vídeos para esta pesquisa.");
+      return;
+    }
+
+    renderVideos(reset ? newVideos : newVideos);
+    setupObserver();
+
+  } catch (error) {
+    console.error(error);
+    showEmpty("Não foi possível carregar os vídeos. Verifique sua conexão e a chave da API.");
+  } finally {
+    loading = false;
+  }
 }
 
-
-/* =====================================
-   CRIAR CARTÃO DO VÍDEO
-===================================== */
-
-function addVideoCard(item) {
-
-    const id = item.id.videoId;
-
-    const s = item.snippet;
-
-    if (currentVideos.includes(id)) return;
-
-    currentVideos.push(id);
-
-    videoData.set(id, item);
+function renderVideos(list) {
+  list.forEach(video => {
+    if (document.getElementById("card-" + video.id)) return;
 
     const card = document.createElement("article");
-
     card.className = "video-card";
+    card.id = "card-" + video.id;
+    card.dataset.videoId = video.id;
 
-    card.dataset.videoId = id;
+    const liked = likedVideos.has(video.id);
+    const saved = savedVideos.has(video.id);
 
     card.innerHTML = `
+      <div class="player-shell">
+        <div id="player-${video.id}"></div>
+      </div>
 
-        <div class="player-shell">
+      <button class="video-tap-layer"
+        aria-label="Ativar ou desativar o som"></button>
 
-            <div id="player-${id}"></div>
+      <div class="video-shade"></div>
 
+      <div class="sound-indicator">
+        🔇 Toque para ativar o som
+      </div>
+
+      <div class="video-info">
+        <div class="video-channel">
+          ${escapeHTML(video.channel)}
         </div>
 
-        <div class="video-shade"></div>
-
-        <div class="video-info">
-
-            <div class="video-channel">
-                ▶ ${escapeHTML(s.channelTitle)}
-            </div>
-
-            <h2 class="video-title">
-                ${escapeHTML(s.title)}
-            </h2>
-
-            <div class="video-description">
-                ${escapeHTML(s.description || "Conteúdo do YouTube.")}
-            </div>
-
+        <div class="video-title">
+          ${escapeHTML(video.title)}
         </div>
 
-        <div class="video-actions">
-
-            <button class="action-button" data-like>
-                ♡
-            </button>
-
-            <span class="action-label">Curtir</span>
-
-            <button class="action-button" data-share>
-                ↗
-            </button>
-
-            <span class="action-label">Enviar</span>
-
-            <button class="action-button" data-save>
-                ${savedVideos.has(id) ? "✓" : "＋"}
-            </button>
-
-            <span class="action-label">Salvar</span>
-
+        <div class="video-description">
+          ✝ Conteúdo cristão • Conecta Fé
         </div>
+      </div>
 
+      <div class="video-actions">
+        <button class="action-button like-button ${liked ? "liked" : ""}">
+          <span class="action-icon">${liked ? "♥" : "♡"}</span>
+          <span class="action-label">Curtir</span>
+        </button>
+
+        <button class="action-button save-button ${saved ? "saved" : ""}">
+          <span class="action-icon">${saved ? "★" : "☆"}</span>
+          <span class="action-label">Salvar</span>
+        </button>
+
+        <button class="action-button share-button">
+          <span class="action-icon">↗</span>
+          <span class="action-label">Compartilhar</span>
+        </button>
+      </div>
     `;
-
-
-    /* CURTIR */
-
-    card.querySelector("[data-like]")
-        .addEventListener("click", event => {
-
-            const button = event.currentTarget;
-
-            button.textContent =
-                button.textContent === "♡" ? "♥" : "♡";
-
-        });
-
-
-    /* COMPARTILHAR */
-
-    card.querySelector("[data-share]")
-        .addEventListener("click", () => {
-
-            shareVideo(id, s.title);
-
-        });
-
-
-    /* SALVAR */
-
-    card.querySelector("[data-save]")
-        .addEventListener("click", event => {
-
-            const button = event.currentTarget;
-
-            if (savedVideos.has(id)) {
-
-                savedVideos.delete(id);
-
-                button.textContent = "＋";
-
-                toast("Vídeo removido dos salvos.");
-
-            } else {
-
-                savedVideos.add(id);
-
-                button.textContent = "✓";
-
-                toast("Vídeo salvo nesta sessão.");
-
-            }
-
-        });
-
 
     feed.appendChild(card);
 
-}
-
-
-/* =====================================
-   PROTEÇÃO DE TEXTO HTML
-===================================== */
-
-function escapeHTML(value) {
-
-    return String(value || "").replace(
-        /[&<>"']/g,
-        character => ({
-
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-            "'": "&#39;"
-
-        })[character]
-    );
-
-}
-
-
-/* =====================================
-   COMPARTILHAR VÍDEO
-===================================== */
-
-async function shareVideo(id, title) {
-
-    const url =
-        `https://www.youtube.com/watch?v=${id}`;
-
-    try {
-
-        if (navigator.share) {
-
-            await navigator.share({
-                title: title,
-                url: url
-            });
-
-        } else {
-
-            await navigator.clipboard.writeText(url);
-
-            toast("Link copiado!");
-
-        }
-
-    } catch (error) {
-
-        if (error.name !== "AbortError") {
-            toast("Não foi possível compartilhar.");
-        }
-
-    }
-
-}
-
-
-/* =====================================
-   OBSERVAR VÍDEOS NA TELA
-===================================== */
-
-function observeCards() {
-
-    if (observer) {
-        observer.disconnect();
-    }
-
-    observer = new IntersectionObserver(entries => {
-
-        entries.forEach(entry => {
-
-            const id = entry.target.dataset.videoId;
-
-            if (
-                entry.isIntersecting &&
-                entry.intersectionRatio >= 0.65
-            ) {
-
-                createPlayer(id);
-
-            } else {
-
-                const player = players.get(id);
-
-                if (player && player.pauseVideo) {
-                    player.pauseVideo();
-                }
-
-            }
-
-        });
-
-    }, {
-
-        root: feed,
-
-        threshold: [0, 0.65, 1]
-
+    card.querySelector(".video-tap-layer").addEventListener("click", () => {
+      toggleSound(video.id);
     });
 
-
-    feed.querySelectorAll(".video-card")
-        .forEach(card => observer.observe(card));
-
-
-    /* CARREGAR MAIS VÍDEOS */
-
-    feed.onscroll = () => {
-
-        if (
-            feed.scrollTop + feed.clientHeight >=
-            feed.scrollHeight - 500 &&
-            nextPageToken &&
-            !loading
-        ) {
-
-            loadVideos(activeCategory, false);
-
-        }
-
-    };
-
-}
-
-
-/* =====================================
-   PLAYER AUTOMÁTICO DO YOUTUBE
-===================================== */
-
-function createPlayer(id) {
-
-    if (!window.YT || !YT.Player) return;
-
-    if (players.has(id)) {
-
-        const player = players.get(id);
-
-        if (player.playVideo) {
-
-            player.mute();
-
-            player.playVideo();
-
-        }
-
-        return;
-
-    }
-
-    const host = document.getElementById(
-        `player-${id}`
-    );
-
-    if (!host) return;
-
-    const player = new YT.Player(host, {
-
-        videoId: id,
-
-        playerVars: {
-
-            autoplay: 1,
-
-            controls: 1,
-
-            playsinline: 1,
-
-            rel: 0,
-
-            modestbranding: 1,
-
-            iv_load_policy: 3,
-
-            fs: 1,
-
-            enablejsapi: 1
-
-        },
-
-        events: {
-
-            onReady: event => {
-
-                event.target.mute();
-
-                event.target.playVideo();
-
-            },
-
-            onStateChange: event => {
-
-                if (
-                    event.data === YT.PlayerState.ENDED
-                ) {
-
-                    event.target.seekTo(0);
-
-                    event.target.playVideo();
-
-                }
-
-            }
-
-        }
-
+    card.querySelector(".like-button").addEventListener("click", () => {
+      toggleLike(video.id, card);
     });
 
-    players.set(id, player);
+    card.querySelector(".save-button").addEventListener("click", () => {
+      toggleSave(video.id, card);
+    });
 
+    card.querySelector(".share-button").addEventListener("click", () => {
+      shareVideo(video);
+    });
+  });
 }
 
+// ==========================================
+// YOUTUBE PLAYER
+// ==========================================
 
-/* =====================================
-   API DO PLAYER
-===================================== */
-
-window.onYouTubeIframeAPIReady = function() {
-
-    observeCards();
-
+window.onYouTubeIframeAPIReady = function () {
+  playerReady = true;
+  setupObserver();
 };
 
+function createPlayer(videoId) {
+  if (!playerReady || !window.YT || !YT.Player) return;
 
-/* =====================================
-   CATEGORIAS
-===================================== */
+  if (players.has(videoId)) {
+    const existing = players.get(videoId);
 
-document.querySelectorAll(".category")
-    .forEach(button => {
+    try {
+      if (videoId === activeVideoId) {
+        existing.playVideo();
+      }
+    } catch (error) {}
 
-        button.addEventListener("click", () => {
+    return;
+  }
 
-            document.querySelectorAll(".category")
-                .forEach(b => b.classList.remove("active"));
+  const element = document.getElementById("player-" + videoId);
+  if (!element) return;
 
-            button.classList.add("active");
+  const player = new YT.Player(element, {
+    videoId: videoId,
 
-            activeCategory = button.dataset.query;
+    playerVars: {
+      autoplay: 1,
+      controls: 0,
+      playsinline: 1,
+      rel: 0,
+      fs: 0,
+      disablekb: 1,
+      iv_load_policy: 3,
+      cc_load_policy: 0,
+      enablejsapi: 1
+    },
 
-            loadVideos(activeCategory, true);
+    events: {
+      onReady: function (event) {
+        try {
+          event.target.mute();
+          event.target.setVolume(0);
 
-        });
+          if (videoId === activeVideoId) {
+            event.target.playVideo();
+          }
+        } catch (error) {
+          console.log("Player aguardando reprodução.");
+        }
+      },
 
-    });
+      onStateChange: function (event) {
+        if (event.data === YT.PlayerState.ENDED) {
+          playNextVideo(videoId);
+        }
+      },
 
+      onError: function (event) {
+        console.log("Erro no vídeo do YouTube:", event.data);
+      }
+    }
+  });
 
-/* =====================================
-   BOTÃO INICIAR
-===================================== */
-
-const startButton = document.getElementById("startButton");
-
-if (startButton) {
-
-    startButton.addEventListener("click", () => {
-
-        loadVideos(activeCategory, true);
-
-    });
-
+  players.set(videoId, player);
 }
 
+function setupObserver() {
+  if (!playerReady) return;
 
-/* =====================================
-   PESQUISA
-===================================== */
+  if (window.videoObserver) {
+    window.videoObserver.disconnect();
+  }
 
-document.getElementById("searchOpen")
-    .addEventListener("click", () => {
+  window.videoObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const card = entry.target;
+      const videoId = card.dataset.videoId;
 
-        searchPanel.classList.remove("hidden");
-
-        searchInput.focus();
-
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
+        activateVideo(videoId);
+      } else {
+        pauseVideo(videoId);
+      }
     });
+  }, {
+    threshold: [0, 0.65, 1]
+  });
 
+  document.querySelectorAll(".video-card").forEach(card => {
+    window.videoObserver.observe(card);
+  });
+}
 
-document.getElementById("searchBack")
-    .addEventListener("click", () => {
+function activateVideo(videoId) {
+  activeVideoId = videoId;
 
-        searchPanel.classList.add("hidden");
+  // Pausa todos os outros vídeos.
+  players.forEach((player, id) => {
+    if (id !== videoId) {
+      try {
+        player.pauseVideo();
+        player.mute();
+      } catch (error) {}
+    }
+  });
 
-    });
+  createPlayer(videoId);
 
+  const player = players.get(videoId);
+
+  if (player) {
+    try {
+      player.mute();
+      player.playVideo();
+    } catch (error) {}
+  }
+
+  updateSoundIndicators();
+}
+
+function pauseVideo(videoId) {
+  const player = players.get(videoId);
+
+  if (player) {
+    try {
+      player.pauseVideo();
+    } catch (error) {}
+  }
+}
+
+function playNextVideo(videoId) {
+  const card = document.getElementById("card-" + videoId);
+  if (!card) return;
+
+  const next = card.nextElementSibling;
+
+  if (next && next.classList.contains("video-card")) {
+    next.scrollIntoView({ behavior: "smooth" });
+  }
+}
+
+// ==========================================
+// CONTROLE DE SOM
+// ==========================================
+
+function toggleSound(videoId) {
+  const player = players.get(videoId);
+
+  if (!player) {
+    showToast("Preparando vídeo. Toque novamente para ativar o som.");
+    createPlayer(videoId);
+    return;
+  }
+
+  if (videoId !== activeVideoId) {
+    activateVideo(videoId);
+  }
+
+  try {
+    if (player.isMuted()) {
+      player.unMute();
+      player.setVolume(100);
+      soundEnabled = true;
+      showToast("🔊 Som ativado");
+    } else {
+      player.mute();
+      soundEnabled = false;
+      showToast("🔇 Som desativado");
+    }
+  } catch (error) {
+    showToast("Toque novamente para controlar o som.");
+  }
+
+  updateSoundIndicators();
+}
+
+function updateSoundIndicators() {
+  document.querySelectorAll(".video-card").forEach(card => {
+    const id = card.dataset.videoId;
+    const indicator = card.querySelector(".sound-indicator");
+
+    if (!indicator) return;
+
+    if (id === activeVideoId) {
+      indicator.textContent = soundEnabled
+        ? "🔊 Som ativado"
+        : "🔇 Toque para ativar o som";
+    } else {
+      indicator.textContent = "🔇";
+    }
+  });
+}
+
+// ==========================================
+// CURTIR E SALVAR
+// ==========================================
+
+function toggleLike(videoId, card) {
+  if (likedVideos.has(videoId)) {
+    likedVideos.delete(videoId);
+    showToast("Curtida removida");
+  } else {
+    likedVideos.add(videoId);
+    showToast("Vídeo curtido ❤️");
+  }
+
+  localStorage.setItem(
+    "conectaFeLiked",
+    JSON.stringify([...likedVideos])
+  );
+
+  const button = card.querySelector(".like-button");
+  const active = likedVideos.has(videoId);
+
+  button.classList.toggle("liked", active);
+  button.querySelector(".action-icon").textContent = active ? "♥" : "♡";
+}
+
+function toggleSave(videoId, card) {
+  if (savedVideos.has(videoId)) {
+    savedVideos.delete(videoId);
+    showToast("Vídeo removido dos salvos");
+  } else {
+    savedVideos.add(videoId);
+    showToast("Vídeo salvo ⭐");
+  }
+
+  localStorage.setItem(
+    "conectaFeSaved",
+    JSON.stringify([...savedVideos])
+  );
+
+  const button = card.querySelector(".save-button");
+  const active = savedVideos.has(videoId);
+
+  button.classList.toggle("saved", active);
+  button.querySelector(".action-icon").textContent = active ? "★" : "☆";
+}
+
+// ==========================================
+// COMPARTILHAR
+// ==========================================
+
+async function shareVideo(video) {
+  const url = "https://www.youtube.com/watch?v=" + video.id;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: video.title,
+        text: "Assista a este vídeo no Conecta Fé!",
+        url: url
+      });
+    } catch (error) {}
+  } else {
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Link copiado!");
+    } catch (error) {
+      showToast("Não foi possível copiar o link.");
+    }
+  }
+}
+
+// ==========================================
+// PESQUISA
+// ==========================================
+
+function openSearch() {
+  searchPanel.classList.add("show");
+  searchInput.focus();
+}
+
+function closeSearch() {
+  searchPanel.classList.remove("show");
+  searchInput.value = "";
+}
+
+function performSearch() {
+  const query = searchInput.value.trim();
+
+  if (!query) {
+    showToast("Digite o que deseja pesquisar.");
+    return;
+  }
+
+  currentQuery = query;
+  currentCategory = "Todos";
+  currentPage = "home";
+
+  updateCategoryButtons();
+  closeSearch();
+  welcome.classList.remove("show");
+
+  document.querySelectorAll(".nav-item").forEach(item => {
+    item.classList.toggle("active", item.dataset.page === "home");
+  });
+
+  loadVideos(true);
+}
 
 document.getElementById("searchButton")
-    .addEventListener("click", () => {
+  .addEventListener("click", openSearch);
 
-        const query = searchInput.value.trim();
+document.getElementById("closeSearch")
+  .addEventListener("click", closeSearch);
 
-        if (!query) {
-
-            toast("Digite o que deseja pesquisar.");
-
-            return;
-
-        }
-
-        activeCategory = query;
-
-        searchPanel.classList.add("hidden");
-
-        document.querySelectorAll(".category")
-            .forEach(b => b.classList.remove("active"));
-
-        loadVideos(query, true);
-
-    });
-
+document.getElementById("doSearch")
+  .addEventListener("click", performSearch);
 
 searchInput.addEventListener("keydown", event => {
-
-    if (event.key === "Enter") {
-
-        document.getElementById("searchButton").click();
-
-    }
-
+  if (event.key === "Enter") {
+    performSearch();
+  }
 });
 
+// ==========================================
+// CATEGORIAS
+// ==========================================
 
-/* =====================================
-   MENU INFERIOR
-===================================== */
+function updateCategoryButtons() {
+  document.querySelectorAll(".category").forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.category === currentCategory
+    );
+  });
+}
 
-document.getElementById("homeButton")
-    .addEventListener("click", () => {
+document.querySelectorAll(".category").forEach(button => {
+  button.addEventListener("click", () => {
+    currentCategory = button.dataset.category;
+    currentQuery = "";
+    currentPage = "home";
 
-        searchPanel.classList.add("hidden");
+    updateCategoryButtons();
+    loadVideos(true);
+  });
+});
 
-        feed.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
+// ==========================================
+// NAVEGAÇÃO
+// ==========================================
 
+document.querySelectorAll(".nav-item").forEach(button => {
+  button.addEventListener("click", () => {
+    const page = button.dataset.page;
+
+    currentPage = page;
+
+    document.querySelectorAll(".nav-item").forEach(item => {
+      item.classList.toggle("active", item === button);
     });
 
+    welcome.classList.remove("show");
 
-document.getElementById("exploreButton")
-    .addEventListener("click", () => {
+    if (page === "home") {
+      currentQuery = "";
+      currentCategory = "Todos";
+      updateCategoryButtons();
+      loadVideos(true);
+    }
 
-        searchPanel.classList.remove("hidden");
+    if (page === "explore") {
+      currentQuery = "";
+      currentCategory = "Pregação";
+      updateCategoryButtons();
+      loadVideos(true);
+    }
 
-        searchInput.focus();
+    if (page === "saved") {
+      showSavedVideos();
+    }
+  });
+});
 
-    });
+function showSavedVideos() {
+  const saved = videos.filter(video => savedVideos.has(video.id));
 
+  if (saved.length > 0) {
+    feed.innerHTML = "";
+    renderVideos(saved);
+    setupObserver();
+    return;
+  }
 
-document.getElementById("savedButton")
-    .addEventListener("click", () => {
+  showEmpty("Seus vídeos salvos aparecerão aqui. Toque na estrela de um vídeo para guardá-lo.");
+}
 
-        toast(
-            "Vídeos salvos: " + savedVideos.size
-        );
+// ==========================================
+// CARREGAR MAIS VÍDEOS
+// ==========================================
 
-    });
-                      
+feed.addEventListener("scroll", () => {
+  if (loading || currentPage === "saved" || !nextPageToken) return;
+
+  const remaining =
+    feed.scrollHeight - feed.scrollTop - feed.clientHeight;
+
+  if (remaining < feed.clientHeight * 1.5) {
+    loadVideos(false);
+  }
+});
+
+// ==========================================
+// INÍCIO
+// ==========================================
+
+document.getElementById("startButton").addEventListener("click", () => {
+  welcome.classList.remove("show");
+  currentPage = "home";
+  loadVideos(true);
+});
+
+window.addEventListener("load", () => {
+  if (!apiKeyIsValid()) {
+    showEmpty("Adicione sua chave da API do YouTube no arquivo app.js.");
+    return;
+  }
+
+  loadVideos(true);
+});
