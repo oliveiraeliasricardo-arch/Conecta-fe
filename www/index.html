@@ -1,140 +1,78 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-
-    <meta name="theme-color" content="#08090c">
-
-    <title>Conecta Fé</title>
-
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#080808">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Conecta Fé</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <header class="topbar">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon">✝</span>
+      <span>Conecta <b>Fé</b></span>
+    </div>
 
-        <div class="brand">
-            <span class="brand-mark">✝</span>
-            <span>CONECTA <b>FÉ</b></span>
-        </div>
+    <button class="icon-button" id="searchButton" aria-label="Pesquisar">
+      <svg viewBox="0 0 24 24">
+        <circle cx="10.8" cy="10.8" r="6.8"></circle>
+        <path d="m16 16 5 5"></path>
+      </svg>
+    </button>
+  </header>
 
-        <button id="searchOpen" class="icon-button">
-            ⌕
-        </button>
+  <nav class="categories" id="categories">
+    <button class="category active" data-category="Todos">Para você</button>
+    <button class="category" data-category="Jesus">Jesus</button>
+    <button class="category" data-category="Pregação">Pregações</button>
+    <button class="category" data-category="Louvor">Louvores</button>
+    <button class="category" data-category="Bíblia">Bíblia</button>
+    <button class="category" data-category="Oração">Oração</button>
+    <button class="category" data-category="Testemunho">Testemunhos</button>
+  </nav>
 
-    </header>
+  <main class="feed" id="feed"></main>
 
+  <section class="welcome" id="welcome">
+    <div class="welcome-icon">✝</div>
+    <h1>Conecta Fé</h1>
+    <p>Uma conexão diária com Jesus.</p>
+    <button id="startButton">Começar a assistir</button>
+  </section>
 
-    <nav class="categories">
+  <section class="search-panel" id="searchPanel">
+    <div class="search-header">
+      <button id="closeSearch" class="back-button">‹</button>
+      <input id="searchInput" type="search" placeholder="Buscar vídeos cristãos...">
+      <button id="doSearch" class="search-submit">Buscar</button>
+    </div>
+  </section>
 
-        <button class="category active"
-            data-query="Jesus Cristo evangelho mensagem bíblica">
-            Para você
-        </button>
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-page="home">
+      <span>⌂</span>
+      <small>Início</small>
+    </button>
 
-        <button class="category"
-            data-query="Jesus Cristo ensinamentos">
-            Jesus
-        </button>
+    <button class="nav-item" data-page="explore">
+      <span>⌕</span>
+      <small>Explorar</small>
+    </button>
 
-        <button class="category"
-            data-query="pregação cristã mensagem bíblica">
-            Pregações
-        </button>
+    <button class="nav-item" data-page="saved">
+      <span>♡</span>
+      <small>Salvos</small>
+    </button>
+  </nav>
 
-        <button class="category"
-            data-query="louvor e adoração cristã">
-            Louvores
-        </button>
+  <div class="toast" id="toast"></div>
 
-        <button class="category"
-            data-query="estudo bíblico vida cristã">
-            Bíblia
-        </button>
-
-    </nav>
-
-
-    <main id="feed" class="feed">
-
-        <div class="welcome">
-
-            <div class="cross">✝</div>
-
-            <h1>Alimente sua fé.</h1>
-
-            <p>
-                Vídeos sobre Jesus, Palavra,
-                louvor e vida cristã.
-            </p>
-
-            <button id="startButton" class="primary-button">
-                Começar a assistir
-            </button>
-
-        </div>
-
-    </main>
-
-
-    <section id="searchPanel" class="search-panel hidden">
-
-        <div class="search-row">
-
-            <button id="searchBack" class="icon-button">
-                ‹
-            </button>
-
-            <input
-                id="searchInput"
-                type="search"
-                placeholder="Buscar vídeos cristãos..."
-            >
-
-            <button id="searchButton" class="search-submit">
-                Buscar
-            </button>
-
-        </div>
-
-        <p class="search-hint">
-            Pesquise por Jesus, oração, fé, Bíblia ou louvor.
-        </p>
-
-    </section>
-
-
-    <nav class="bottom-nav">
-
-        <button class="bottom-item selected" id="homeButton">
-            <span>⌂</span>
-            <small>Início</small>
-        </button>
-
-        <button class="bottom-item" id="exploreButton">
-            <span>◉</span>
-            <small>Explorar</small>
-        </button>
-
-        <button class="bottom-item" id="savedButton">
-            <span>♡</span>
-            <small>Salvos</small>
-        </button>
-
-    </nav>
-
-
-    <div id="toast" class="toast"></div>
-
-
-    <script src="app.js"></script>
-
-    <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="app.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
 
 </body>
 </html>
