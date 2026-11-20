@@ -1,6 +1,9 @@
 
 const API_KEY = "AIzaSyAS3BhR0B7d2ElA86jMirUB7hoMM_zWBc8";
 
+// CANAIS CADASTRADOS
+// Continuam sendo utilizados como fonte extra no Para você.
+
 const APPROVED_CHANNELS = [
   {
     id: "UCJAO3KgZdEhCqwpkZyAYY6A",
@@ -10,18 +13,92 @@ const APPROVED_CHANNELS = [
 
 const APPROVED_CREATOR_CHANNEL_IDS = [];
 
+// PESQUISAS GERAIS
+
 const categorySearch = {
   "Todos": "Jesus Cristo evangelho louvor cristão adoração",
+
   "Jesus": "Jesus Cristo vida de Jesus milagres parábolas evangelho",
-  "Pregação": "pregação bíblica sermão cristão",
+
+  "Pregação": "pregação adventista doutrinas bíblicas",
+
   "Louvor": "louvor cristão música gospel clipe oficial -coletanea -playlist -medley -mix -1hora -2horas",
-  "Bíblia": "estudo bíblico palavra de Deus",
+
+  "Bíblia": "estudo bíblico adventista Daniel Apocalipse profecias sábado",
+
   "Oração": "oração cristã oração a Deus",
+
   "Testemunho": "testemunho cristão transformação de vida"
 };
 
-const ADVENTIST_ONLY_CATEGORIES =
-  new Set(["Pregação", "Bíblia"]);
+// CATEGORIAS COM PESQUISAS DOUTRINÁRIAS
+
+const doctrineSearches = {
+  "Pregação": [
+    "pregação adventista sábado bíblico",
+    "sermão adventista segunda vinda de Jesus",
+    "doutrina adventista santuário celestial",
+    "três mensagens angélicas Apocalipse 14",
+    "grande conflito Bíblia adventista",
+    "estado dos mortos adventista",
+    "justificação pela fé adventista",
+    "profecias de Daniel e Apocalipse adventista",
+    "lei e graça estudo adventista",
+    "doutrinas bíblicas adventistas",
+    "pregação sobre os dez mandamentos",
+    "sermão sobre a volta de Jesus",
+    "mensagem adventista sobre o Espírito Santo",
+    "pregação sobre o sábado e a criação",
+    "mensagem sobre salvação pela fé"
+  ],
+
+  "Bíblia": [
+    "estudo bíblico adventista Daniel 2",
+    "Apocalipse 14 três mensagens angélicas",
+    "sábado bíblico quarto mandamento",
+    "estudo do santuário celestial",
+    "estado dos mortos Bíblia",
+    "segunda vinda de Jesus estudo bíblico",
+    "juízo investigativo Bíblia adventista",
+    "28 crenças fundamentais adventistas",
+    "profecias de Daniel estudo bíblico",
+    "lei de Deus e graça estudo bíblico",
+    "estudo bíblico sobre o sábado",
+    "Daniel 7 profecia bíblica",
+    "Apocalipse 13 e 14 estudo bíblico",
+    "dom de profecia Bíblia",
+    "mortalidade da alma estudo bíblico",
+    "batismo bíblico estudo adventista",
+    "santuário terrestre e celestial Bíblia"
+  ]
+};
+
+// VARIEDADE PARA O PARA VOCÊ
+
+const FOR_YOU_SEARCHES = [
+  "Jesus Cristo milagres e ensinamentos",
+  "histórias bíblicas emocionantes",
+  "pregação cristã mensagem de Deus",
+  "louvor cristão adoração a Deus",
+  "testemunho cristão transformação de vida",
+  "parábolas de Jesus explicadas",
+  "mensagem bíblica para fortalecer a fé",
+  "oração da manhã com Deus",
+  "vida cristã e intimidade com Deus",
+  "promessas de Deus na Bíblia",
+  "Jesus Cristo esperança e salvação",
+  "estudo bíblico cristão",
+  "mensagem de fé para momentos difíceis",
+  "louvores cristãos que tocam o coração",
+  "histórias de personagens bíblicos",
+  "palavra de Deus para hoje",
+  "ensinamentos de Jesus Cristo",
+  "mensagem cristã de esperança",
+  "reflexão bíblica sobre fé",
+  "adoração e louvor a Jesus"
+];
+
+// ESTADO DO APLICATIVO
 
 let videos = [];
 let currentCategory = "Todos";
@@ -29,6 +106,8 @@ let currentQuery = "";
 let currentPage = "home";
 let loading = false;
 let nextPageToken = null;
+let pageSources = [];
+
 let soundEnabled = false;
 let started = false;
 let activeVideoId = null;
@@ -36,6 +115,9 @@ let observer = null;
 
 const players = new Map();
 const manuallyPaused = new Set();
+
+// Evita repetir vídeos do Para você durante a sessão.
+const forYouSeenIds = new Set();
 
 const savedVideos = new Set(
   JSON.parse(localStorage.getItem("conectaFeSaved") || "[]")
@@ -45,12 +127,16 @@ const likedVideos = new Set(
   JSON.parse(localStorage.getItem("conectaFeLiked") || "[]")
 );
 
+// FUNÇÕES GERAIS
+
 function byId(id) {
   return document.getElementById(id);
 }
 
 function showToast(message) {
   const el = byId("toast");
+  if (!el) return;
+
   el.textContent = message;
   el.classList.add("show");
 
@@ -105,6 +191,33 @@ function titlesAreSimilar(titleA, titleB) {
   return similarity >= 0.68;
 }
 
+// EMBARALHAR RESULTADOS
+
+function shuffleArray(array) {
+  const result = [...array];
+
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+
+    [result[i], result[j]] =
+      [result[j], result[i]];
+  }
+
+  return result;
+}
+
+function getRandomForYouQueries(amount = 3) {
+  return shuffleArray(FOR_YOU_SEARCHES).slice(0, amount);
+}
+
+function getRandomDoctrineQueries(category, amount = 5) {
+  const searches = doctrineSearches[category] || [];
+
+  return shuffleArray(searches).slice(0, amount);
+}
+
+// FILTROS DE CONTEÚDO
+
 function hasArtificialContentSignals(video) {
   const text = (
     video.title + " " + video.description
@@ -154,6 +267,8 @@ function getCategoryQuery() {
     categorySearch.Todos;
 }
 
+// INTERFACE
+
 function setWelcome(visible) {
   byId("welcome").classList.toggle("hidden", !visible);
 }
@@ -162,13 +277,14 @@ function setFeedMessage(message) {
   const old = byId("feedMessage");
   if (old) old.remove();
 
-  if (message) {
-    const el = document.createElement("div");
-    el.id = "feedMessage";
-    el.className = "feed-message";
-    el.textContent = message;
-    byId("feed").appendChild(el);
-  }
+  if (!message) return;
+
+  const el = document.createElement("div");
+  el.id = "feedMessage";
+  el.className = "feed-message";
+  el.textContent = message;
+
+  byId("feed").appendChild(el);
 }
 
 function stopObserver() {
@@ -191,9 +307,13 @@ function clearFeed() {
   activeVideoId = null;
 
   byId("feed").innerHTML = "";
+
   videos = [];
   nextPageToken = null;
+  pageSources = [];
 }
+
+// YOUTUBE API
 
 async function youtubeSearch(query, channelId, pageToken) {
   const params = new URLSearchParams({
@@ -283,122 +403,244 @@ async function fetchSearchGroup(query, channelId, pageToken) {
   };
 }
 
+// PREPARAR PESQUISAS
+
+function prepareSearchSources() {
+  const approvedIds = getAllApprovedChannelIds();
+
+  // PREGAÇÕES E BÍBLIA
+  // Qualquer canal pode aparecer.
+  // A pesquisa é direcionada às doutrinas adventistas.
+
+  if (
+    currentCategory === "Pregação" ||
+    currentCategory === "Bíblia"
+  ) {
+    const randomQueries = getRandomDoctrineQueries(
+      currentCategory,
+      5
+    );
+
+    pageSources = randomQueries.map(query => ({
+      query,
+      channelId: null,
+      token: null
+    }));
+
+    return;
+  }
+
+  // PARA VOCÊ
+  // Mistura vídeos cristãos gerais com conteúdo dos canais cadastrados.
+
+  if (currentCategory === "Todos" && !currentQuery) {
+    const randomQueries = getRandomForYouQueries(3);
+
+    pageSources = randomQueries.map(query => ({
+      query,
+      channelId: null,
+      token: null
+    }));
+
+    // Fonte extra dos canais cadastrados.
+    approvedIds.forEach(id => {
+      pageSources.push({
+        query: randomQueries[0],
+        channelId: id,
+        token: null
+      });
+    });
+
+    return;
+  }
+
+  // OUTRAS CATEGORIAS
+
+  pageSources = [{
+    query: getCategoryQuery(),
+    channelId: null,
+    token: null
+  }];
+}
+
+// CARREGAR VÍDEOS
+
 async function loadVideos({ reset = false, page = false } = {}) {
   if (loading) return;
 
-  if (API_KEY === "COLOQUE_SUA_CHAVE_API_AQUI") {
+  if (
+    API_KEY === "COLOQUE_SUA_CHAVE_API_AQUI" ||
+    !API_KEY
+  ) {
     showToast("Adicione sua chave da API no app.js.");
     return;
   }
 
-  if (reset) clearFeed();
+  if (reset) {
+    clearFeed();
+
+    prepareSearchSources();
+  }
 
   loading = true;
 
   setFeedMessage(
-    page ? "Carregando mais vídeos..." : "Buscando vídeos cristãos..."
+    page
+      ? "Descobrindo mais vídeos..."
+      : "Buscando vídeos cristãos..."
   );
 
   try {
-    const query = getCategoryQuery();
-    const approvedIds = getAllApprovedChannelIds();
-    let groups = [];
+    let sourcesToFetch = [];
 
-    if (ADVENTIST_ONLY_CATEGORIES.has(currentCategory)) {
-      if (!approvedIds.length) {
-        throw new Error(
-          "Cadastre canais adventistas para esta categoria."
-        );
-      }
-
-      groups = await Promise.all(
-        approvedIds.map(id =>
-          fetchSearchGroup(query, id, page ? nextPageToken : null)
-        )
+    if (page) {
+      sourcesToFetch = pageSources.filter(
+        source => source.token
       );
-
     } else {
-      groups.push(
-        await fetchSearchGroup(
-          query,
-          null,
-          page ? nextPageToken : null
-        )
-      );
-
-      if (!page && currentCategory === "Todos") {
-        const extra = await Promise.all(
-          approvedIds.map(id =>
-            fetchSearchGroup(query, id, null)
-              .catch(() => ({
-                details: [],
-                nextPageToken: null
-              }))
-          )
-        );
-
-        groups.push(...extra);
-      }
+      sourcesToFetch = pageSources;
     }
 
-    const fetched = groups.flatMap(g => g.details);
+    if (!sourcesToFetch.length) {
+      setFeedMessage(
+        videos.length
+          ? "Você chegou ao fim dos vídeos disponíveis."
+          : "Não encontramos vídeos. Tente novamente."
+      );
 
-    nextPageToken =
-      groups.find(g => g.nextPageToken)?.nextPageToken || null;
+      nextPageToken = null;
+      return;
+    }
 
-    const existingIds = new Set(videos.map(v => v.id));
+    // CADA PESQUISA TEM SUA PRÓPRIA PAGINAÇÃO.
+
+    const results = await Promise.all(
+      sourcesToFetch.map(async source => {
+
+        const result = await fetchSearchGroup(
+          source.query,
+          source.channelId,
+          page ? source.token : null
+        );
+
+        source.token = result.nextPageToken;
+
+        return result;
+      })
+    );
+
+    nextPageToken = pageSources.some(
+      source => source.token
+    ) ? "more" : null;
+
+    const fetched = results.flatMap(
+      group => group.details
+    );
+
+    const existingIds = new Set(
+      videos.map(video => video.id)
+    );
+
     const batchIds = new Set();
 
-    const candidates = fetched.filter(video => {
+    let candidates = fetched.filter(video => {
+
       if (
         !video.id ||
         existingIds.has(video.id) ||
         batchIds.has(video.id)
-      ) return false;
+      ) {
+        return false;
+      }
 
       batchIds.add(video.id);
 
-      if (hasArtificialContentSignals(video)) return false;
-      if (isClearlyNonPortuguese(video)) return false;
+      if (hasArtificialContentSignals(video)) {
+        return false;
+      }
+
+      if (isClearlyNonPortuguese(video)) {
+        return false;
+      }
+
+      if (
+        currentCategory === "Todos" &&
+        !currentQuery &&
+        forYouSeenIds.has(video.id)
+      ) {
+        return false;
+      }
 
       return true;
     });
 
-    const acceptedTitles = videos.map(v => v.title);
+    // EMBARALHAR O PARA VOCÊ
+
+    if (currentCategory === "Todos" && !currentQuery) {
+      candidates = shuffleArray(candidates);
+    }
+
+    // REMOVER TÍTULOS MUITO PARECIDOS
+
+    const acceptedTitles = videos.map(
+      video => video.title
+    );
+
     const unique = [];
 
     for (const video of candidates) {
+
       if (
         acceptedTitles.some(title =>
           titlesAreSimilar(title, video.title)
         )
-      ) continue;
+      ) {
+        continue;
+      }
 
       if (
         unique.some(item =>
           titlesAreSimilar(item.title, video.title)
         )
-      ) continue;
+      ) {
+        continue;
+      }
 
       unique.push(video);
     }
 
+    // DIVERSIDADE DE CANAIS
+
     const counts = {};
 
-    videos.forEach(v => {
-      counts[v.channelId] =
-        (counts[v.channelId] || 0) + 1;
+    videos.forEach(video => {
+      counts[video.channelId] =
+        (counts[video.channelId] || 0) + 1;
     });
 
     const diversified = [];
 
-    const initialLimit =
-      currentCategory === "Todos" ||
-      currentCategory === "Louvor" ? 1 : 2;
-
     for (const video of unique) {
       const count = counts[video.channelId] || 0;
-      const limit = page ? 2 : initialLimit;
+
+      let limit = 2;
+
+      if (
+        currentCategory === "Pregação" ||
+        currentCategory === "Bíblia"
+      ) {
+        // Sem limite por canal nessas categorias.
+        limit = Infinity;
+
+      } else if (
+        currentCategory === "Todos" &&
+        !currentQuery
+      ) {
+        limit = 2;
+
+      } else if (currentCategory === "Louvor") {
+        limit = 2;
+      }
 
       if (count >= limit) continue;
 
@@ -406,28 +648,58 @@ async function loadVideos({ reset = false, page = false } = {}) {
       diversified.push(video);
     }
 
-    if (!diversified.length && !videos.length) {
-      setFeedMessage(
-        "Não encontramos vídeos com esses filtros. Tente outra categoria."
-      );
-    } else {
-      setFeedMessage("");
-      videos.push(...diversified);
-      renderVideos(diversified);
-    }
+    const finalVideos =
+      currentCategory === "Todos" && !currentQuery
+        ? shuffleArray(diversified)
+        : diversified;
 
-    if (!diversified.length && videos.length) {
-      showToast("Não encontramos novos vídeos diferentes.");
+    if (!finalVideos.length && !videos.length) {
+
+      setFeedMessage(
+        "Não encontramos vídeos com esses filtros. Tente novamente."
+      );
+
+    } else if (!finalVideos.length) {
+
+      setFeedMessage("");
+
+      if (!nextPageToken) {
+        showToast("Não encontramos mais vídeos.");
+      }
+
+    } else {
+
+      setFeedMessage("");
+
+      videos.push(...finalVideos);
+
+      // REGISTRAR VÍDEOS JÁ EXIBIDOS NO PARA VOCÊ.
+
+      if (
+        currentCategory === "Todos" &&
+        !currentQuery
+      ) {
+        finalVideos.forEach(video => {
+          forYouSeenIds.add(video.id);
+        });
+      }
+
+      renderVideos(finalVideos);
     }
 
   } catch (error) {
     console.error(error);
+
     setFeedMessage(error.message);
     showToast(error.message);
+
   } finally {
     loading = false;
   }
 }
+
+// CRIAR CARTÃO DO VÍDEO
+
 function createVideoCard(video) {
   const card = document.createElement("article");
 
@@ -480,8 +752,11 @@ function createVideoCard(video) {
     </div>
   `;
 
-  const likeButton = card.querySelector('[data-action="like"]');
-  const saveButton = card.querySelector('[data-action="save"]');
+  const likeButton =
+    card.querySelector('[data-action="like"]');
+
+  const saveButton =
+    card.querySelector('[data-action="save"]');
 
   if (likedVideos.has(video.id)) {
     likeButton.classList.add("active");
@@ -502,7 +777,12 @@ function createVideoCard(video) {
     });
 
   likeButton.addEventListener("click", () => {
-    toggleSet(likedVideos, video.id, "conectaFeLiked");
+    toggleSet(
+      likedVideos,
+      video.id,
+      "conectaFeLiked"
+    );
+
     likeButton.classList.toggle(
       "active",
       likedVideos.has(video.id)
@@ -510,7 +790,12 @@ function createVideoCard(video) {
   });
 
   saveButton.addEventListener("click", () => {
-    toggleSet(savedVideos, video.id, "conectaFeSaved");
+    toggleSet(
+      savedVideos,
+      video.id,
+      "conectaFeSaved"
+    );
+
     saveButton.classList.toggle(
       "active",
       savedVideos.has(video.id)
@@ -525,21 +810,28 @@ function createVideoCard(video) {
 
   card.querySelector('[data-action="share"]')
     .addEventListener("click", async () => {
+
       const url =
         `https://www.youtube.com/watch?v=${video.id}`;
 
       try {
         if (navigator.share) {
+
           await navigator.share({
             title: video.title,
             url
           });
+
         } else if (navigator.clipboard) {
+
           await navigator.clipboard.writeText(url);
           showToast("Link copiado.");
+
         } else {
+
           showToast(url);
         }
+
       } catch (_) {}
     });
 
@@ -553,7 +845,10 @@ function toggleSet(set, id, key) {
     set.add(id);
   }
 
-  localStorage.setItem(key, JSON.stringify([...set]));
+  localStorage.setItem(
+    key,
+    JSON.stringify([...set])
+  );
 }
 
 function renderVideos(list) {
@@ -566,38 +861,58 @@ function renderVideos(list) {
   observeCards();
 }
 
+// OBSERVAR VÍDEOS VISÍVEIS
+
 function observeCards() {
   if (observer) observer.disconnect();
 
-  const cards = document.querySelectorAll(".video-card");
+  const cards =
+    document.querySelectorAll(".video-card");
 
   observer = new IntersectionObserver(entries => {
+
     let best = null;
 
     entries.forEach(entry => {
+
       if (
         entry.isIntersecting &&
-        (!best ||
-          entry.intersectionRatio > best.intersectionRatio)
+        (
+          !best ||
+          entry.intersectionRatio >
+            best.intersectionRatio
+        )
       ) {
         best = entry;
       }
     });
 
-    if (best && best.intersectionRatio >= 0.6) {
-      activateVideo(best.target.dataset.videoId);
+    if (
+      best &&
+      best.intersectionRatio >= 0.6
+    ) {
+      activateVideo(
+        best.target.dataset.videoId
+      );
     }
+
   }, {
     root: byId("feed"),
     threshold: [0.25, 0.5, 0.6, 0.8, 1]
   });
 
-  cards.forEach(card => observer.observe(card));
+  cards.forEach(card => {
+    observer.observe(card);
+  });
 }
+
+// CONTROLE DE REPRODUÇÃO
 
 function pauseInactivePlayers() {
   for (const [id, player] of players) {
+
     if (id !== activeVideoId) {
+
       try {
         player.pauseVideo();
       } catch (_) {}
@@ -610,8 +925,12 @@ function pauseInactivePlayers() {
 function activateVideo(videoId) {
   if (!videoId) return;
 
-  if (activeVideoId && activeVideoId !== videoId) {
-    const oldPlayer = players.get(activeVideoId);
+  if (
+    activeVideoId &&
+    activeVideoId !== videoId
+  ) {
+    const oldPlayer =
+      players.get(activeVideoId);
 
     try {
       oldPlayer?.pauseVideo();
@@ -622,312 +941,40 @@ function activateVideo(videoId) {
 
   activeVideoId = videoId;
 
-  // A pausa manual deixa de bloquear o autoplay
-  // quando o usuário entra em outro vídeo.
   manuallyPaused.delete(videoId);
 
-  if (typeof YT === "undefined" || !YT.Player) {
+  if (
+    typeof YT === "undefined" ||
+    !YT.Player
+  ) {
     return;
   }
 
   let player = players.get(videoId);
 
   if (!player) {
-    player = new YT.Player(`player-${videoId}`, {
-      videoId: videoId,
 
-      playerVars: {
-        autoplay: 1,
-        controls: 0,
-        playsinline: 1,
-        rel: 0,
-        modestbranding: 1,
-        iv_load_policy: 3,
-        disablekb: 1,
-        fs: 0
-      },
+    player = new YT.Player(
+      `player-${videoId}`,
+      {
+        videoId: videoId,
 
-      events: {
-        onReady: event => {
-          try {
-            if (!soundEnabled) {
-              event.target.mute();
-            }
-
-            if (
-              activeVideoId === videoId &&
-              !manuallyPaused.has(videoId)
-            ) {
-              event.target.playVideo();
-            }
-          } catch (_) {}
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+          iv_load_policy: 3,
+          disablekb: 1,
+          fs: 0
         },
 
-        onStateChange: event => {
-          updatePlayState(videoId, event.data);
-        },
+        events: {
 
-        onError: () => {
-          showToast(
-            "Este vídeo não pode ser reproduzido no aplicativo."
-          );
-        }
-      }
-    });
+          onReady: event => {
 
-    players.set(videoId, player);
+            try {
 
-  } else {
-    try {
-      if (!soundEnabled) player.mute();
-      player.playVideo();
-    } catch (_) {}
-  }
-
-  pauseInactivePlayers();
-}
-
-function updatePlayState(videoId, state) {
-  const indicator = byId(`state-${videoId}`);
-
-  if (!indicator || typeof YT === "undefined") return;
-
-  const paused =
-    state === YT.PlayerState.PAUSED ||
-    state === YT.PlayerState.ENDED;
-
-  indicator.textContent =
-    state === YT.PlayerState.ENDED ? "↻" : "▶";
-
-  indicator.classList.toggle("visible", paused);
-}
-
-function togglePlayback(videoId) {
-  const player = players.get(videoId);
-
-  if (!player) {
-    activateVideo(videoId);
-    return;
-  }
-
-  try {
-    const state = player.getPlayerState();
-
-    if (
-      state === YT.PlayerState.PLAYING ||
-      state === YT.PlayerState.BUFFERING
-    ) {
-      manuallyPaused.add(videoId);
-      player.pauseVideo();
-
-      const indicator = byId(`state-${videoId}`);
-
-      if (indicator) {
-        indicator.textContent = "▶";
-        indicator.classList.add("visible");
-      }
-
-    } else {
-      manuallyPaused.delete(videoId);
-      player.playVideo();
-
-      const indicator = byId(`state-${videoId}`);
-
-      if (indicator) {
-        indicator.classList.remove("visible");
-      }
-    }
-
-  } catch (_) {}
-}
-
-function activateSound(videoId) {
-  soundEnabled = true;
-
-  for (const [id, player] of players) {
-    try {
-      player.unMute();
-
-      if (
-        id === videoId &&
-        !manuallyPaused.has(id)
-      ) {
-        player.playVideo();
-      }
-    } catch (_) {}
-  }
-
-  document.querySelectorAll(".sound-button")
-    .forEach(button => {
-      button.classList.add("hidden");
-    });
-
-  showToast("Som ativado.");
-}
-
-function openSearch() {
-  byId("searchPanel").classList.add("open");
-  byId("searchInput").focus();
-}
-
-function closeSearch() {
-  byId("searchPanel").classList.remove("open");
-}
-
-async function startSearch() {
-  const value = byId("searchInput").value.trim();
-
-  if (!value) {
-    showToast("Digite o que deseja pesquisar.");
-    return;
-  }
-
-  currentQuery = `${value} cristão`;
-  setWelcome(false);
-  setActivePage("explore");
-  closeSearch();
-
-  await loadVideos({ reset: true });
-}
-
-function setActivePage(page) {
-  currentPage = page;
-
-  document.querySelectorAll(".nav-item")
-    .forEach(button => {
-      button.classList.toggle(
-        "active",
-        button.dataset.page === page
-      );
-    });
-}
-
-function setActiveCategory(category) {
-  currentCategory = category;
-
-  document.querySelectorAll(".category")
-    .forEach(button => {
-      button.classList.toggle(
-        "active",
-        button.dataset.category === category
-      );
-    });
-}
-
-function showSavedVideos() {
-  if (observer) observer.disconnect();
-
-  for (const player of players.values()) {
-    try {
-      player.pauseVideo();
-      player.destroy();
-    } catch (_) {}
-  }
-
-  players.clear();
-  activeVideoId = null;
-
-  byId("feed").innerHTML = "";
-
-  const saved = videos.filter(video =>
-    savedVideos.has(video.id)
-  );
-
-  if (!saved.length) {
-    setFeedMessage(
-      "Você ainda não salvou vídeos nesta lista."
-    );
-    return;
-  }
-
-  renderVideos(saved);
-}
-
-function setFeedMessage(message) {
-  const old = byId("feedMessage");
-  if (old) old.remove();
-
-  if (!message) return;
-
-  const el = document.createElement("div");
-  el.id = "feedMessage";
-  el.className = "feed-message";
-  el.textContent = message;
-
-  byId("feed").appendChild(el);
-}
-
-function bindInterface() {
-  byId("startButton").addEventListener("click", async () => {
-    started = true;
-    setWelcome(false);
-    setActivePage("home");
-    await loadVideos({ reset: true });
-  });
-
-  byId("searchButton").addEventListener("click", openSearch);
-  byId("closeSearch").addEventListener("click", closeSearch);
-  byId("doSearch").addEventListener("click", startSearch);
-
-  byId("searchInput").addEventListener("keydown", event => {
-    if (event.key === "Enter") startSearch();
-  });
-
-  document.querySelectorAll(".category")
-    .forEach(button => {
-      button.addEventListener("click", async () => {
-        currentQuery = "";
-        setActiveCategory(button.dataset.category);
-        setActivePage("home");
-        setWelcome(false);
-
-        await loadVideos({ reset: true });
-      });
-    });
-
-  document.querySelectorAll(".nav-item")
-    .forEach(button => {
-      button.addEventListener("click", async () => {
-        const page = button.dataset.page;
-        setActivePage(page);
-
-        if (page === "saved") {
-          showSavedVideos();
-        } else if (page === "explore") {
-          openSearch();
-        } else {
-          currentQuery = "";
-          setWelcome(false);
-
-          if (!videos.length) {
-            await loadVideos({ reset: true });
-          }
-        }
-      });
-    });
-
-  byId("feed").addEventListener("scroll", () => {
-    const feed = byId("feed");
-
-    if (
-      !loading &&
-      nextPageToken &&
-      feed.scrollTop + feed.clientHeight >=
-        feed.scrollHeight - feed.clientHeight * 0.7
-    ) {
-      loadVideos({ page: true });
-    }
-  }, { passive: true });
-}
-
-window.onYouTubeIframeAPIReady = function() {
-  if (started && videos.length) {
-    observeCards();
-  }
-};
-
-document.addEventListener("DOMContentLoaded", () => {
-  bindInterface();
-  setWelcome(true);
-});
-             
+              if (!soundEnabled) {
+                event.targe
