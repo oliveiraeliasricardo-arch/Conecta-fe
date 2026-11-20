@@ -3,6 +3,7 @@
   "name": "conecta-fe",
   "version": "1.0.0",
   "private": true,
+  "description": "Aplicativo cristão de vídeos com YouTube",
   "scripts": {
     "android:add": "cap add android",
     "android:sync": "cap sync android"
