@@ -1,9 +1,10 @@
-
 /* =====================================================
    CONECTA FÉ
    Aplicativo cristão com curadoria adventista
    ===================================================== */
 
+// Insira sua chave da YouTube Data API v3.
+// Não compartilhe sua chave publicamente.
 const API_KEY = "AIzaSyAS3BhR0B7d2ElA86jMirUB7hoMM_zWBc8";
 
 // =====================================================
@@ -20,10 +21,6 @@ const searchInput = document.getElementById("searchInput");
 // CANAIS ADVENTISTAS APROVADOS
 // =====================================================
 
-// Cadastre aqui os IDs reais dos canais adventistas.
-// Todos os vídeos desses canais serão aceitos nas
-// categorias Pregações e Bíblia.
-
 const APPROVED_CHANNELS = [
   {
     id: "UCJAO3KgZdEhCqwpkZyAYY6A",
@@ -31,8 +28,9 @@ const APPROVED_CHANNELS = [
   }
 ];
 
+// Adicione outros IDs de canais adventistas aprovados.
 const APPROVED_CREATOR_CHANNEL_IDS = [
-  // Adicione outros IDs de canais adventistas aqui.
+  // "ID_REAL_DO_CANAL"
 ];
 
 // =====================================================
@@ -112,8 +110,11 @@ function escapeHTML(value = "") {
 }
 
 function apiKeyIsValid() {
-  return API_KEY &&
-    API_KEY !== "COLOQUE_SUA_CHAVE_API_AQUI";
+  return Boolean(
+    API_KEY &&
+    API_KEY !== "COLOQUE_SUA_CHAVE_API_AQUI" &&
+    API_KEY.trim().length > 20
+  );
 }
 
 function showLoading(message = "Carregando vídeos...") {
@@ -136,7 +137,7 @@ function showEmpty(message) {
 }
 
 // =====================================================
-// IDENTIFICAR CANAIS ADVENTISTAS
+// CANAIS ADVENTISTAS
 // =====================================================
 
 async function resolveApprovedChannels() {
@@ -151,7 +152,7 @@ async function resolveApprovedChannels() {
 }
 
 // =====================================================
-// VERIFICAR SE A PESQUISA É RESTRITA
+// VERIFICAR PESQUISA RESTRITA
 // =====================================================
 
 function isAdventistSearch() {
@@ -184,7 +185,9 @@ async function loadVideos(reset = true) {
   if (loading) return;
 
   if (!apiKeyIsValid()) {
-    showEmpty("Configure sua chave da API do YouTube no arquivo app.js.");
+    showEmpty(
+      "Configure sua chave da API do YouTube no arquivo app.js."
+    );
     return;
   }
 
@@ -200,16 +203,17 @@ async function loadVideos(reset = true) {
   try {
     const restrictedSearch = isAdventistSearch();
 
-    const needsAdventistChannels =
+    const needsChannels =
       restrictedSearch || currentCategory === "Todos";
 
-    if (needsAdventistChannels && channelIds.length === 0) {
+    if (needsChannels && channelIds.length === 0) {
       channelIds = await resolveApprovedChannels();
     }
 
     const groups = [];
 
     if (restrictedSearch) {
+
       // PREGAÇÕES E BÍBLIA:
       // Somente canais adventistas cadastrados.
 
@@ -221,17 +225,19 @@ async function loadVideos(reset = true) {
         });
       });
 
-    } else if (currentCategory === "Todos" && !currentQuery) {
-      // TODOS:
-      // Conteúdo geral sobre Jesus e louvores.
+    } else if (
+      currentCategory === "Todos" &&
+      !currentQuery
+    ) {
+
+      // CONTEÚDO GERAL.
 
       groups.push({
         key: "__general__",
         query: categorySearch["Todos"]
       });
 
-      // Também inclui pregações e estudos dos canais
-      // adventistas cadastrados.
+      // CONTEÚDO DOS CANAIS ADVENTISTAS.
 
       channelIds.forEach(channelId => {
         groups.push({
@@ -242,7 +248,8 @@ async function loadVideos(reset = true) {
       });
 
     } else {
-      // JESUS, LOUVORES, ORAÇÃO E TESTEMUNHOS:
+
+      // JESUS, LOUVOR, ORAÇÃO E TESTEMUNHO:
       // Pesquisa geral no YouTube.
 
       groups.push({
@@ -252,14 +259,19 @@ async function loadVideos(reset = true) {
     }
 
     if (groups.length === 0) {
-      showEmpty("Nenhum canal adventista foi cadastrado.");
+      showEmpty(
+        "Nenhum canal adventista foi cadastrado."
+      );
       return;
     }
 
     const requests = groups.map(async group => {
+
       const pageToken = channelPageTokens[group.key];
 
-      if (!reset && !pageToken) return [];
+      if (!reset && !pageToken) {
+        return [];
+      }
 
       const params = new URLSearchParams({
         part: "snippet",
@@ -291,12 +303,13 @@ async function loadVideos(reset = true) {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("Erro na pesquisa do YouTube:", data);
+        console.error("Erro na API do YouTube:", data);
         channelPageTokens[group.key] = "";
         return [];
       }
 
-      channelPageTokens[group.key] = data.nextPageToken || "";
+      channelPageTokens[group.key] =
+        data.nextPageToken || "";
 
       return (data.items || [])
         .filter(item => item.id && item.id.videoId)
@@ -310,6 +323,7 @@ async function loadVideos(reset = true) {
         }))
         .filter(video => {
           if (!restrictedSearch) return true;
+
           return channelIds.includes(video.channelId);
         });
     });
@@ -317,7 +331,9 @@ async function loadVideos(reset = true) {
     const results = await Promise.all(requests);
     const newVideos = results.flat();
 
-    const existing = new Set(videos.map(video => video.id));
+    const existing = new Set(
+      videos.map(video => video.id)
+    );
 
     const uniqueVideos = newVideos.filter(
       video => !existing.has(video.id)
@@ -354,12 +370,16 @@ async function loadVideos(reset = true) {
 }
 
 // =====================================================
-// CRIAR CARTÕES DOS VÍDEOS
+// CRIAR CARTÕES
 // =====================================================
 
 function renderVideos(list) {
+
   list.forEach(video => {
-    if (document.getElementById("card-" + video.id)) return;
+
+    if (document.getElementById("card-" + video.id)) {
+      return;
+    }
 
     const card = document.createElement("article");
 
@@ -382,10 +402,6 @@ function renderVideos(list) {
 
       <div class="play-state">▶</div>
 
-      <div class="sound-indicator">
-        🔇 Toque para ativar o som
-      </div>
-
       <div class="video-info">
         <div class="video-channel">
           ${escapeHTML(video.channel)}
@@ -401,18 +417,23 @@ function renderVideos(list) {
       </div>
 
       <div class="video-actions">
-        <button class="action-button sound-button">
+
+        <button class="action-button sound-button ${userActivatedSound ? "hidden" : ""}">
           <span class="action-icon sound-icon">🔇</span>
-          <span class="action-label">Som</span>
+          <span class="action-label">Ativar som</span>
         </button>
 
         <button class="action-button like-button ${liked ? "liked" : ""}">
-          <span class="action-icon">${liked ? "♥" : "♡"}</span>
+          <span class="action-icon">
+            ${liked ? "♥" : "♡"}
+          </span>
           <span class="action-label">Curtir</span>
         </button>
 
         <button class="action-button save-button ${saved ? "saved" : ""}">
-          <span class="action-icon">${saved ? "★" : "☆"}</span>
+          <span class="action-icon">
+            ${saved ? "★" : "☆"}
+          </span>
           <span class="action-label">Salvar</span>
         </button>
 
@@ -420,6 +441,7 @@ function renderVideos(list) {
           <span class="action-icon">↗</span>
           <span class="action-label">Compartilhar</span>
         </button>
+
       </div>
     `;
 
@@ -457,7 +479,7 @@ function renderVideos(list) {
 }
 
 // =====================================================
-// YOUTUBE IFRAME PLAYER
+// YOUTUBE PLAYER
 // =====================================================
 
 window.onYouTubeIframeAPIReady = function () {
@@ -466,13 +488,23 @@ window.onYouTubeIframeAPIReady = function () {
 };
 
 function createPlayer(videoId) {
-  if (!playerReady || !window.YT || !YT.Player) return;
-  if (players.has(videoId)) return;
 
-  const element = document.getElementById("player-" + videoId);
+  if (!playerReady || !window.YT || !YT.Player) {
+    return;
+  }
+
+  if (players.has(videoId)) {
+    return;
+  }
+
+  const element = document.getElementById(
+    "player-" + videoId
+  );
+
   if (!element) return;
 
   const player = new YT.Player(element, {
+
     videoId,
 
     playerVars: {
@@ -488,8 +520,11 @@ function createPlayer(videoId) {
     },
 
     events: {
+
       onReady: function (event) {
+
         try {
+
           if (userActivatedSound && soundEnabled) {
             event.target.unMute();
             event.target.setVolume(100);
@@ -510,9 +545,12 @@ function createPlayer(videoId) {
         } catch (error) {
           console.log("Player aguardando reprodução.");
         }
+
+        updatePlaybackIndicator(videoId);
       },
 
       onStateChange: function (event) {
+
         updatePlaybackIndicator(videoId);
 
         if (event.data === YT.PlayerState.ENDED) {
@@ -521,7 +559,7 @@ function createPlayer(videoId) {
       },
 
       onError: function (event) {
-        console.log("Erro no vídeo do YouTube:", event.data);
+        console.log("Erro no vídeo:", event.data);
       }
     }
   });
@@ -534,25 +572,37 @@ function createPlayer(videoId) {
 // =====================================================
 
 function setupObserver() {
+
   if (!playerReady) return;
 
   if (window.videoObserver) {
     window.videoObserver.disconnect();
   }
 
-  window.videoObserver = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      const videoId = entry.target.dataset.videoId;
+  window.videoObserver = new IntersectionObserver(
+    entries => {
 
-      if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
-        activateVideo(videoId);
-      } else {
-        pauseVideo(videoId);
-      }
-    });
-  }, {
-    threshold: [0, 0.65, 1]
-  });
+      entries.forEach(entry => {
+
+        const videoId = entry.target.dataset.videoId;
+
+        if (!videoId) return;
+
+        if (
+          entry.isIntersecting &&
+          entry.intersectionRatio >= 0.65
+        ) {
+          activateVideo(videoId);
+        } else {
+          pauseVideo(videoId);
+        }
+      });
+
+    },
+    {
+      threshold: [0, 0.65, 1]
+    }
+  );
 
   document.querySelectorAll(".video-card").forEach(card => {
     window.videoObserver.observe(card);
@@ -564,14 +614,18 @@ function setupObserver() {
 // =====================================================
 
 function activateVideo(videoId) {
+
   activeVideoId = videoId;
 
   players.forEach((player, id) => {
+
     if (id !== videoId) {
+
       try {
         player.pauseVideo();
         player.mute();
       } catch (error) {}
+
     }
   });
 
@@ -580,7 +634,9 @@ function activateVideo(videoId) {
   const player = players.get(videoId);
 
   if (player && !manuallyPaused.has(videoId)) {
+
     try {
+
       if (userActivatedSound && soundEnabled) {
         player.unMute();
         player.setVolume(100);
@@ -602,11 +658,15 @@ function activateVideo(videoId) {
 // =====================================================
 
 function togglePlayback(videoId) {
+
   const player = players.get(videoId);
 
   if (!player) {
+
     createPlayer(videoId);
+
     showToast("Preparando vídeo...");
+
     return;
   }
 
@@ -616,17 +676,22 @@ function togglePlayback(videoId) {
   }
 
   try {
+
     const state = player.getPlayerState();
 
     if (
       state === YT.PlayerState.PLAYING ||
       state === YT.PlayerState.BUFFERING
     ) {
+
       manuallyPaused.add(videoId);
+
       player.pauseVideo();
+
       showToast("Vídeo pausado");
 
     } else {
+
       manuallyPaused.delete(videoId);
 
       if (userActivatedSound && soundEnabled) {
@@ -635,6 +700,7 @@ function togglePlayback(videoId) {
       }
 
       player.playVideo();
+
       showToast("Reproduzindo");
     }
 
@@ -645,8 +711,14 @@ function togglePlayback(videoId) {
   updatePlaybackIndicator(videoId);
 }
 
+// =====================================================
+// INDICADOR DE PAUSA
+// =====================================================
+
 function updatePlaybackIndicator(videoId) {
+
   const card = document.getElementById("card-" + videoId);
+
   if (!card) return;
 
   const indicator = card.querySelector(".play-state");
@@ -657,7 +729,9 @@ function updatePlaybackIndicator(videoId) {
   let paused = true;
 
   if (player && window.YT) {
+
     try {
+
       const state = player.getPlayerState();
 
       paused =
@@ -667,30 +741,45 @@ function updatePlaybackIndicator(videoId) {
     } catch (error) {}
   }
 
-  indicator.textContent = paused ? "▶" : "Ⅱ";
+  indicator.textContent = "▶";
   indicator.classList.toggle("visible", paused);
 }
 
+// =====================================================
+// PAUSAR VÍDEO
+// =====================================================
+
 function pauseVideo(videoId) {
+
   const player = players.get(videoId);
 
   if (player) {
+
     try {
       player.pauseVideo();
     } catch (error) {}
+
   }
 
   updatePlaybackIndicator(videoId);
 }
 
+// =====================================================
+// PRÓXIMO VÍDEO
+// =====================================================
+
 function playNextVideo(videoId) {
+
   const card = document.getElementById("card-" + videoId);
+
   if (!card) return;
 
   const next = card.nextElementSibling;
 
   if (next && next.classList.contains("video-card")) {
-    next.scrollIntoView({ behavior: "smooth" });
+    next.scrollIntoView({
+      behavior: "smooth"
+    });
   }
 }
 
@@ -699,11 +788,15 @@ function playNextVideo(videoId) {
 // =====================================================
 
 function toggleSound(videoId) {
+
   const player = players.get(videoId);
 
   if (!player) {
+
     createPlayer(videoId);
-    showToast("Preparando vídeo. Toque novamente para ativar o som.");
+
+    showToast("Preparando vídeo. Toque novamente se necessário.");
+
     return;
   }
 
@@ -712,45 +805,48 @@ function toggleSound(videoId) {
   }
 
   try {
-    if (player.isMuted()) {
-      player.unMute();
-      player.setVolume(100);
 
-      soundEnabled = true;
-      userActivatedSound = true;
+    // O botão serve apenas para ativar o áudio.
+    // Depois da ativação, desaparece.
 
-      showToast("🔊 Som ativado");
+    player.unMute();
+    player.setVolume(100);
 
-    } else {
-      player.mute();
+    soundEnabled = true;
+    userActivatedSound = true;
 
-      soundEnabled = false;
-      userActivatedSound = false;
-
-      showToast("🔇 Som desativado");
+    if (
+      player.getPlayerState() !== YT.PlayerState.PLAYING
+    ) {
+      manuallyPaused.delete(videoId);
+      player.playVideo();
     }
 
+    showToast("🔊 Som ativado");
+
   } catch (error) {
-    showToast("Não foi possível alterar o som.");
+
+    showToast("Não foi possível ativar o som.");
+
+    return;
   }
 
   updateSoundIndicators();
 }
 
+// =====================================================
+// OCULTAR BOTÃO DE SOM
+// =====================================================
+
 function updateSoundIndicators() {
-  document.querySelectorAll(".video-card").forEach(card => {
-    const id = card.dataset.videoId;
-    const button = card.querySelector(".sound-button");
 
-    if (!button) return;
+  document.querySelectorAll(".sound-button").forEach(button => {
 
-    const icon = button.querySelector(".sound-icon");
-    const label = button.querySelector(".action-label");
+    button.classList.toggle(
+      "hidden",
+      userActivatedSound
+    );
 
-    const isActive = id === activeVideoId && soundEnabled;
-
-    icon.textContent = isActive ? "🔊" : "🔇";
-    label.textContent = isActive ? "Som ligado" : "Som";
   });
 }
 
@@ -759,11 +855,17 @@ function updateSoundIndicators() {
 // =====================================================
 
 function toggleLike(videoId, card) {
+
   if (likedVideos.has(videoId)) {
+
     likedVideos.delete(videoId);
+
     showToast("Curtida removida");
+
   } else {
+
     likedVideos.add(videoId);
+
     showToast("Vídeo curtido ❤️");
   }
 
@@ -773,9 +875,11 @@ function toggleLike(videoId, card) {
   );
 
   const button = card.querySelector(".like-button");
+
   const active = likedVideos.has(videoId);
 
   button.classList.toggle("liked", active);
+
   button.querySelector(".action-icon").textContent =
     active ? "♥" : "♡";
 }
@@ -785,11 +889,17 @@ function toggleLike(videoId, card) {
 // =====================================================
 
 function toggleSave(videoId, card) {
+
   if (savedVideos.has(videoId)) {
+
     savedVideos.delete(videoId);
+
     showToast("Vídeo removido dos salvos");
+
   } else {
+
     savedVideos.add(videoId);
+
     showToast("Vídeo salvo ⭐");
   }
 
@@ -799,9 +909,11 @@ function toggleSave(videoId, card) {
   );
 
   const button = card.querySelector(".save-button");
+
   const active = savedVideos.has(videoId);
 
   button.classList.toggle("saved", active);
+
   button.querySelector(".action-icon").textContent =
     active ? "★" : "☆";
 }
@@ -811,22 +923,32 @@ function toggleSave(videoId, card) {
 // =====================================================
 
 async function shareVideo(video) {
-  const url = "https://www.youtube.com/watch?v=" + video.id;
+
+  const url =
+    "https://www.youtube.com/watch?v=" + video.id;
 
   if (navigator.share) {
+
     try {
+
       await navigator.share({
         title: video.title,
         text: "Assista a este vídeo no Conecta Fé!",
         url
       });
+
     } catch (error) {}
 
   } else {
+
     try {
+
       await navigator.clipboard.writeText(url);
+
       showToast("Link copiado!");
+
     } catch (error) {
+
       showToast("Não foi possível copiar o link.");
     }
   }
@@ -837,20 +959,27 @@ async function shareVideo(video) {
 // =====================================================
 
 function openSearch() {
+
   searchPanel.classList.add("show");
+
   searchInput.focus();
 }
 
 function closeSearch() {
+
   searchPanel.classList.remove("show");
+
   searchInput.value = "";
 }
 
 function performSearch() {
+
   const query = searchInput.value.trim();
 
   if (!query) {
+
     showToast("Digite o que deseja pesquisar.");
+
     return;
   }
 
@@ -859,12 +988,20 @@ function performSearch() {
   currentPage = "home";
 
   updateCategoryButtons();
+
   closeSearch();
 
-  if (welcome) welcome.classList.remove("show");
+  if (welcome) {
+    welcome.classList.remove("show");
+  }
 
   document.querySelectorAll(".nav-item").forEach(item => {
-    item.classList.toggle("active", item.dataset.page === "home");
+
+    item.classList.toggle(
+      "active",
+      item.dataset.page === "home"
+    );
+
   });
 
   loadVideos(true);
@@ -880,9 +1017,11 @@ document.getElementById("doSearch")
   .addEventListener("click", performSearch);
 
 searchInput.addEventListener("keydown", event => {
+
   if (event.key === "Enter") {
     performSearch();
   }
+
 });
 
 // =====================================================
@@ -890,61 +1029,93 @@ searchInput.addEventListener("keydown", event => {
 // =====================================================
 
 function updateCategoryButtons() {
+
   document.querySelectorAll(".category").forEach(button => {
+
     button.classList.toggle(
       "active",
       button.dataset.category === currentCategory
     );
+
   });
 }
 
 document.querySelectorAll(".category").forEach(button => {
+
   button.addEventListener("click", () => {
+
     currentCategory = button.dataset.category;
     currentQuery = "";
     currentPage = "home";
 
     updateCategoryButtons();
+
+    document.querySelectorAll(".nav-item").forEach(item => {
+
+      item.classList.toggle(
+        "active",
+        item.dataset.page === "home"
+      );
+
+    });
+
+    if (welcome) {
+      welcome.classList.remove("show");
+    }
+
     loadVideos(true);
   });
+
 });
 
 // =====================================================
-// NAVEGAÇÃO
+// NAVEGAÇÃO INFERIOR
 // =====================================================
 
-document.querySelectorAll(".nav-item").forEach(button => {
-  button.addEventListener("click", () => {
-    const page = button.dataset.page;
+document.querySelectorAll(".nav-item").forEach(item => {
+
+  item.addEventListener("click", () => {
+
+    const page = item.dataset.page;
 
     currentPage = page;
 
-    document.querySelectorAll(".nav-item").forEach(item => {
-      item.classList.toggle("active", item === button);
+    document.querySelectorAll(".nav-item").forEach(navItem => {
+
+      navItem.classList.toggle(
+        "active",
+        navItem === item
+      );
+
     });
 
-    if (welcome) welcome.classList.remove("show");
-
     if (page === "home") {
+
       currentQuery = "";
       currentCategory = "Todos";
 
       updateCategoryButtons();
+
       loadVideos(true);
     }
 
     if (page === "explore") {
+
       currentQuery = "";
       currentCategory = "Jesus";
 
       updateCategoryButtons();
+
       loadVideos(true);
     }
 
     if (page === "saved") {
+
       showSavedVideos();
     }
+
   });
+
 });
 
 // =====================================================
@@ -952,14 +1123,19 @@ document.querySelectorAll(".nav-item").forEach(button => {
 // =====================================================
 
 function showSavedVideos() {
+
   const saved = videos.filter(video =>
     savedVideos.has(video.id)
   );
 
   if (saved.length > 0) {
+
     feed.innerHTML = "";
+
     renderVideos(saved);
+
     setupObserver();
+
     return;
   }
 
@@ -973,7 +1149,10 @@ function showSavedVideos() {
 // =====================================================
 
 feed.addEventListener("scroll", () => {
-  if (loading || currentPage === "saved") return;
+
+  if (loading || currentPage === "saved") {
+    return;
+  }
 
   const hasMore = Object.values(channelPageTokens)
     .some(token => Boolean(token));
@@ -986,8 +1165,10 @@ feed.addEventListener("scroll", () => {
     feed.clientHeight;
 
   if (remaining < feed.clientHeight * 1.5) {
+
     loadVideos(false);
   }
+
 });
 
 // =====================================================
@@ -996,9 +1177,13 @@ feed.addEventListener("scroll", () => {
 
 document.getElementById("startButton")
   .addEventListener("click", () => {
-    if (welcome) welcome.classList.remove("show");
+
+    if (welcome) {
+      welcome.classList.remove("show");
+    }
 
     currentPage = "home";
+
     loadVideos(true);
   });
 
@@ -1007,10 +1192,13 @@ document.getElementById("startButton")
 // =====================================================
 
 window.addEventListener("load", () => {
+
   if (!apiKeyIsValid()) {
+
     showEmpty(
       "Adicione sua chave da API do YouTube no arquivo app.js."
     );
+
     return;
   }
 
