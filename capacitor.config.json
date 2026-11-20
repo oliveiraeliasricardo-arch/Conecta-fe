@@ -1,0 +1,9 @@
+
+{
+  "appId": "br.com.conectafe.app",
+  "appName": "Conecta Fé",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
